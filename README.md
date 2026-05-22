@@ -1,6 +1,6 @@
 # ssimpy
 
-**ssimpy** is a Python command-line tool for detecting statistically significant pairwise somatic co-mutations in cancer genomics data. It implements the SelectSim algorithm, testing both **co-occurrence** (two genes mutated together more than expected) and **mutual exclusivity** (two genes rarely co-mutated) using a simulation-based FDR framework.
+**ssimpy** is a Python command-line tool for detecting statistically significant pairwise somatic co-mutations in cancer genomics data. It implements the SelectSim algorithm, testing both **co-occurrence** (two genes mutated together more frequently than expected by chance) and **mutual exclusivity** (two genes mutated together less frequently than expected by chance) using a simulation-based FDR framework.
 
 ## Features
 
