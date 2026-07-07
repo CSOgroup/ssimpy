@@ -1,0 +1,446 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>ssimpy — Co-mutation Analysis</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <style>
+    body { background: #f4f6f9; font-family: 'Segoe UI', sans-serif; }
+
+    .hero {
+      background: linear-gradient(135deg, #1a1a6e 0%, #2d2d9e 100%);
+      color: white; padding: 2.2rem 0 1.8rem;
+    }
+    .hero h1 { font-size: 2rem; font-weight: 700; letter-spacing: .03em; }
+    .hero p  { opacity: .75; margin: 0; font-size: .95rem; }
+
+    /* Mode selector cards */
+    .mode-card {
+      border: 2px solid #dee2e6; border-radius: 12px;
+      padding: 1.4rem 1.2rem; cursor: pointer;
+      background: white; transition: all .2s;
+      height: 100%;
+    }
+    .mode-card:hover { border-color: #6c7fe8; background: #f0f2ff; }
+    .mode-card.active {
+      border-color: #1a1a6e; background: #eef0ff;
+      box-shadow: 0 0 0 3px rgba(26,26,110,.12);
+    }
+    .mode-card .mode-icon { font-size: 2rem; margin-bottom: .5rem; }
+    .mode-card h5 { font-weight: 700; margin-bottom: .3rem; color: #1a1a6e; }
+    .mode-card p  { font-size: .85rem; color: #6c757d; margin: 0; }
+
+    /* Drop zones */
+    .drop-zone {
+      border: 2px dashed #adb5bd; border-radius: 8px;
+      padding: 1.2rem; text-align: center; cursor: pointer;
+      background: #fafafa; transition: border-color .2s, background .2s;
+    }
+    .drop-zone:hover, .drop-zone.dragover {
+      border-color: #1a1a6e; background: #eef0ff;
+    }
+    .drop-zone input[type=file] { display: none; }
+    .drop-zone .dz-label { font-size: .9rem; color: #495057; }
+    .drop-zone .dz-hint  { font-size: .78rem; color: #adb5bd; margin-top: .2rem; }
+    .file-badge {
+      display: inline-block; background: #e8ecff; color: #1a1a6e;
+      border-radius: 20px; padding: .15rem .7rem; font-size: .8rem;
+      margin: .2rem .15rem 0;
+    }
+
+    /* Section panels */
+    .panel { background: white; border-radius: 12px; padding: 1.5rem; margin-bottom: 1rem; box-shadow: 0 1px 4px rgba(0,0,0,.06); }
+    .panel-title { font-weight: 700; color: #1a1a6e; margin-bottom: 1rem; font-size: 1rem; }
+
+    /* Results */
+    .badge-co { background-color: #0d6efd !important; }
+    .badge-me { background-color: #dc3545 !important; }
+    .summary-box { background: #f0f2ff; border-radius: 8px; padding: .9rem 1.2rem; }
+    th.sortable { cursor: pointer; user-select: none; white-space: nowrap; }
+    th.sortable:hover { background: #e9ecef; }
+
+    #resultsSection { display: none; }
+    #spinner        { display: none; }
+    #sharedSection  { display: none; }
+  </style>
+</head>
+<body>
+
+<div class="hero text-center mb-4">
+  <h1>ssimpy</h1>
+  <p>Somatic Co-mutation Significance Testing</p>
+</div>
+
+<div class="container" style="max-width: 900px">
+
+  <!-- ── Step 1: Mode selector ──────────────────────────────────────────── -->
+  <div class="mb-3">
+    <div class="text-muted small mb-2 fw-semibold text-uppercase" style="letter-spacing:.05em">Step 1 — Choose input format</div>
+    <div class="row g-3">
+      <div class="col-md-6">
+        <div class="mode-card" id="modeCardA" onclick="selectMode('A')">
+          <div class="mode-icon">📁</div>
+          <h5>GAM / TMB Files</h5>
+          <p>Upload pre-processed binary mutation matrices and pre-calculated TMB files.</p>
+        </div>
+      </div>
+      <div class="col-md-6">
+        <div class="mode-card" id="modeCardB" onclick="selectMode('B')">
+          <div class="mode-icon">🧬</div>
+          <h5>MAF File</h5>
+          <p>Upload a raw Mutation Annotation Format file — ssimpy will convert it automatically.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Step 2A: GAM / TMB upload ─────────────────────────────────────── -->
+  <div id="sectionA" style="display:none">
+    <div class="panel">
+      <div class="panel-title">Step 2 — Upload files</div>
+      <div class="alert alert-info py-2 small mb-3">
+        File order matters: GAM file 1 is paired with TMB file 1, etc.
+        Multiple files enable per-mutation-type covariates (e.g. missense + truncating).
+      </div>
+      <div class="row g-3">
+        <div class="col-md-6">
+          <label class="form-label fw-semibold">GAM file(s) <span class="text-danger">*</span></label>
+          <div class="drop-zone" id="dzGam" onclick="document.getElementById('inGam').click()">
+            <input type="file" id="inGam" multiple accept=".tsv,.txt,.csv" />
+            <div class="dz-label">Click or drag GAM TSV file(s)</div>
+            <div class="dz-hint">Binary gene × sample matrix — rows=genes, columns=samples</div>
+          </div>
+          <div id="listGam" class="mt-1"></div>
+        </div>
+        <div class="col-md-6">
+          <label class="form-label fw-semibold">TMB file(s) <span class="text-muted">(optional)</span></label>
+          <div class="drop-zone" id="dzTmb" onclick="document.getElementById('inTmb').click()">
+            <input type="file" id="inTmb" multiple accept=".tsv,.txt,.csv" />
+            <div class="dz-label">Click or drag TMB TSV file(s)</div>
+            <div class="dz-hint">Columns: sample, tmb [, class] — falls back to GAM column sums if omitted</div>
+          </div>
+          <div id="listTmb" class="mt-1"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Step 2B: MAF upload ────────────────────────────────────────────── -->
+  <div id="sectionB" style="display:none">
+    <div class="panel">
+      <div class="panel-title">Step 2 — Upload files</div>
+      <div class="row g-3 mb-3">
+        <div class="col-md-6">
+          <label class="form-label fw-semibold">MAF file <span class="text-danger">*</span></label>
+          <div class="drop-zone" id="dzMaf" onclick="document.getElementById('inMaf').click()">
+            <input type="file" id="inMaf" accept=".maf,.tsv,.txt" />
+            <div class="dz-label">Click or drag MAF file</div>
+            <div class="dz-hint">Requires Hugo_Symbol, Tumor_Sample_Barcode, Variant_Classification</div>
+          </div>
+          <div id="listMaf" class="mt-1"></div>
+        </div>
+        <div class="col-md-6">
+          <label class="form-label fw-semibold">Sample metadata <span class="text-muted">(optional)</span></label>
+          <div class="drop-zone" id="dzMeta" onclick="document.getElementById('inMeta').click()">
+            <input type="file" id="inMeta" accept=".tsv,.txt,.csv" />
+            <div class="dz-label">Click or drag metadata TSV</div>
+            <div class="dz-hint">Columns: sample, class — adds tumor subtype covariates</div>
+          </div>
+          <div id="listMeta" class="mt-1"></div>
+        </div>
+        <div class="col-md-6">
+          <label class="form-label fw-semibold">Gene list <span class="text-muted">(optional)</span></label>
+          <div class="drop-zone" id="dzGenes" onclick="document.getElementById('inGenes').click()">
+            <input type="file" id="inGenes" accept=".txt,.tsv" />
+            <div class="dz-label">Click or drag gene list</div>
+            <div class="dz-hint">Plain text, one gene name per line — restricts GAM to listed genes</div>
+          </div>
+          <div id="listGenes" class="mt-1"></div>
+        </div>
+      </div>
+
+      <!-- MAF-specific parameters -->
+      <div class="border-top pt-3 mt-1">
+        <div class="fw-semibold small text-muted mb-2 text-uppercase" style="letter-spacing:.04em">MAF conversion options</div>
+        <div class="row g-3 align-items-end">
+          <div class="col-sm-4">
+            <label class="form-label">Min mutated samples per gene</label>
+            <input type="number" class="form-control" id="mafMinSamples" value="2" min="1" />
+          </div>
+          <div class="col-sm-4">
+            <label class="form-label">Min total mutations per gene</label>
+            <input type="number" class="form-control" id="mafMinMutations" value="1" min="1" />
+          </div>
+          <div class="col-sm-4 d-flex align-items-end pb-1">
+            <div class="form-check">
+              <input class="form-check-input" type="checkbox" id="mafSplitByType" />
+              <label class="form-check-label" for="mafSplitByType">
+                Split by mutation type
+                <span class="d-block text-muted" style="font-size:.78rem">Separate missense &amp; truncating E matrices</span>
+              </label>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Step 3: Shared parameters ─────────────────────────────────────── -->
+  <div id="sharedSection">
+    <div class="panel">
+      <div class="panel-title">Step 3 — Analysis parameters</div>
+      <div class="row g-3">
+        <div class="col-sm-4">
+          <label class="form-label">Simulations (--N)</label>
+          <input type="number" class="form-control" id="pN" value="1000" min="100" max="50000" />
+        </div>
+        <div class="col-sm-4">
+          <label class="form-label">FDR threshold</label>
+          <input type="number" class="form-control" id="pFdr" value="0.1" min="0.01" max="1" step="0.01" />
+        </div>
+        <div class="col-sm-4">
+          <label class="form-label">Min mutated samples (ssimpy)</label>
+          <input type="number" class="form-control" id="pMinMut" value="5" min="1" />
+        </div>
+        <div class="col-sm-3">
+          <label class="form-label">TMB penalty τ</label>
+          <input type="number" class="form-control" id="pTau" value="1.0" step="0.1" />
+        </div>
+        <div class="col-sm-3">
+          <label class="form-label">TMB penalty λ</label>
+          <input type="number" class="form-control" id="pLam" value="0.3" step="0.05" />
+        </div>
+        <div class="col-sm-3">
+          <label class="form-label">Simulation filter %</label>
+          <input type="number" class="form-control" id="pFilterPct" value="0.10" step="0.01" min="0" max="0.5" />
+        </div>
+        <div class="col-sm-3">
+          <label class="form-label">Random seed <span class="text-muted">(optional)</span></label>
+          <input type="number" class="form-control" id="pSeed" placeholder="random" />
+        </div>
+      </div>
+    </div>
+
+    <!-- Run button -->
+    <div class="d-grid mb-4">
+      <button class="btn btn-primary btn-lg fw-bold" id="runBtn" onclick="runAnalysis()">
+        Run ssimpy
+      </button>
+    </div>
+  </div>
+
+  <!-- ── Spinner / error ────────────────────────────────────────────────── -->
+  <div id="spinner" class="text-center my-4">
+    <div class="spinner-border text-primary" style="width:3rem;height:3rem"></div>
+    <p class="mt-2 text-muted">Running simulations — this may take a minute…</p>
+  </div>
+  <div id="errorBox" class="alert alert-danger d-none mb-3"></div>
+
+  <!-- ── Results ────────────────────────────────────────────────────────── -->
+  <div id="resultsSection">
+    <div class="panel">
+      <div class="d-flex align-items-center justify-content-between mb-3">
+        <span class="panel-title mb-0">Results</span>
+        <button class="btn btn-sm btn-outline-primary" onclick="downloadTSV()">⬇ Download TSV</button>
+      </div>
+      <div class="summary-box mb-3" id="summary"></div>
+      <div class="form-check form-switch mb-2">
+        <input class="form-check-input" type="checkbox" id="showAll" onchange="renderTable()" />
+        <label class="form-check-label" for="showAll">Show all pairs (not just significant)</label>
+      </div>
+      <div class="table-responsive">
+        <table class="table table-sm table-hover table-bordered align-middle">
+          <thead class="table-dark">
+            <tr>
+              <th class="sortable" data-col="gene1">Gene 1 ↕</th>
+              <th class="sortable" data-col="gene2">Gene 2 ↕</th>
+              <th class="sortable" data-col="n_comut">Co-muts ↕</th>
+              <th class="sortable" data-col="freq_gene1">Freq 1 ↕</th>
+              <th class="sortable" data-col="freq_gene2">Freq 2 ↕</th>
+              <th class="sortable" data-col="nES">nES ↕</th>
+              <th>Direction</th>
+              <th class="sortable" data-col="FDR">FDR ↕</th>
+              <th>Sig.</th>
+            </tr>
+          </thead>
+          <tbody id="tableBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /container -->
+
+<script>
+  // ── State ──────────────────────────────────────────────────────────────────
+  let currentMode = null;
+  let currentJobId = null;
+  let allRows = [], sigRows = [];
+  let sortCol = 'nES', sortAsc = false;
+
+  // ── Mode selector ──────────────────────────────────────────────────────────
+  function selectMode(mode) {
+    currentMode = mode;
+    document.getElementById('modeCardA').classList.toggle('active', mode === 'A');
+    document.getElementById('modeCardB').classList.toggle('active', mode === 'B');
+    document.getElementById('sectionA').style.display = mode === 'A' ? 'block' : 'none';
+    document.getElementById('sectionB').style.display = mode === 'B' ? 'block' : 'none';
+    document.getElementById('sharedSection').style.display = 'block';
+  }
+
+  // ── Drop zones ─────────────────────────────────────────────────────────────
+  function setupDrop(zoneId, inputId, listId, multi) {
+    const zone  = document.getElementById(zoneId);
+    const input = document.getElementById(inputId);
+    zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('dragover'); });
+    zone.addEventListener('dragleave', () => zone.classList.remove('dragover'));
+    zone.addEventListener('drop', e => {
+      e.preventDefault(); zone.classList.remove('dragover');
+      if (multi) {
+        // DataTransfer.files is read-only; assign via input reset trick
+        const dt = new DataTransfer();
+        Array.from(e.dataTransfer.files).forEach(f => dt.items.add(f));
+        input.files = dt.files;
+      } else {
+        const dt = new DataTransfer();
+        if (e.dataTransfer.files[0]) dt.items.add(e.dataTransfer.files[0]);
+        input.files = dt.files;
+      }
+      showFiles(input, listId);
+    });
+    input.addEventListener('change', () => showFiles(input, listId));
+  }
+
+  function showFiles(input, listId) {
+    const el = document.getElementById(listId);
+    el.innerHTML = Array.from(input.files)
+      .map(f => `<span class="file-badge">📄 ${f.name}</span>`).join('');
+  }
+
+  setupDrop('dzGam',   'inGam',   'listGam',   true);
+  setupDrop('dzTmb',   'inTmb',   'listTmb',   true);
+  setupDrop('dzMaf',   'inMaf',   'listMaf',   false);
+  setupDrop('dzMeta',  'inMeta',  'listMeta',  false);
+  setupDrop('dzGenes', 'inGenes', 'listGenes', false);
+
+  // ── Run ────────────────────────────────────────────────────────────────────
+  async function runAnalysis() {
+    if (!currentMode) { alert('Please select an input format above.'); return; }
+
+    if (currentMode === 'A' && !document.getElementById('inGam').files.length) {
+      alert('Please select at least one GAM file.'); return;
+    }
+    if (currentMode === 'B' && !document.getElementById('inMaf').files.length) {
+      alert('Please select a MAF file.'); return;
+    }
+
+    document.getElementById('runBtn').disabled = true;
+    document.getElementById('spinner').style.display = 'block';
+    document.getElementById('resultsSection').style.display = 'none';
+    document.getElementById('errorBox').classList.add('d-none');
+
+    const fd = new FormData();
+    // Shared parameters
+    fd.append('n_simulations', document.getElementById('pN').value);
+    fd.append('fdr',           document.getElementById('pFdr').value);
+    fd.append('min_mut',       document.getElementById('pMinMut').value);
+    fd.append('tau',           document.getElementById('pTau').value);
+    fd.append('lam',           document.getElementById('pLam').value);
+    fd.append('filter_pct',    document.getElementById('pFilterPct').value);
+    const seed = document.getElementById('pSeed').value.trim();
+    if (seed) fd.append('seed', seed);
+
+    let endpoint;
+    if (currentMode === 'A') {
+      endpoint = '/run';
+      Array.from(document.getElementById('inGam').files).forEach(f => fd.append('gam_files', f));
+      Array.from(document.getElementById('inTmb').files).forEach(f => fd.append('tmb_files', f));
+    } else {
+      endpoint = '/run-from-maf';
+      fd.append('maf_file', document.getElementById('inMaf').files[0]);
+      const meta  = document.getElementById('inMeta').files[0];
+      const genes = document.getElementById('inGenes').files[0];
+      if (meta)  fd.append('metadata_file',  meta);
+      if (genes) fd.append('gene_list_file', genes);
+      fd.append('split_by_type',   document.getElementById('mafSplitByType').checked ? 'true' : 'false');
+      fd.append('min_samples',     document.getElementById('mafMinSamples').value);
+      fd.append('min_mutations',   document.getElementById('mafMinMutations').value);
+    }
+
+    try {
+      const resp = await fetch(endpoint, { method: 'POST', body: fd });
+      const data = await resp.json();
+      if (!resp.ok) { showError(data.detail || 'Unknown error'); return; }
+
+      currentJobId = data.job_id;
+      document.getElementById('summary').innerHTML =
+        `<strong>${data.n_significant}</strong> significant pairs &nbsp;|&nbsp;` +
+        `<span class="badge badge-co ms-1">${data.n_co_occurrence} co-occurrence</span>` +
+        `<span class="badge badge-me ms-1">${data.n_mutual_exclusivity} mutual exclusivity</span>` +
+        `<span class="text-muted ms-2 small">${data.n_total_pairs} total pairs tested</span>`;
+
+      await loadResults();
+      document.getElementById('resultsSection').style.display = 'block';
+      document.getElementById('resultsSection').scrollIntoView({ behavior: 'smooth' });
+    } catch (e) {
+      showError(e.message);
+    } finally {
+      document.getElementById('runBtn').disabled = false;
+      document.getElementById('spinner').style.display = 'none';
+    }
+  }
+
+  async function loadResults() {
+    const [s, a] = await Promise.all([
+      fetch(`/results/${currentJobId}`),
+      fetch(`/results/${currentJobId}?all=true`),
+    ]);
+    sigRows = await s.json();
+    allRows = await a.json();
+    renderTable();
+  }
+
+  function renderTable() {
+    const rows = [...(document.getElementById('showAll').checked ? allRows : sigRows)]
+      .sort((a, b) => {
+        const va = a[sortCol], vb = b[sortCol];
+        return typeof va === 'string'
+          ? (sortAsc ? va.localeCompare(vb) : vb.localeCompare(va))
+          : (sortAsc ? va - vb : vb - va);
+      });
+
+    document.getElementById('tableBody').innerHTML = rows.map(r => `
+      <tr>
+        <td>${r.gene1}</td><td>${r.gene2}</td>
+        <td class="text-center">${r.n_comut}</td>
+        <td>${(+r.freq_gene1).toFixed(3)}</td>
+        <td>${(+r.freq_gene2).toFixed(3)}</td>
+        <td><strong>${(+r.nES).toFixed(3)}</strong></td>
+        <td>${r.direction === 'co-occurrence'
+          ? '<span class="badge badge-co">co-occurrence</span>'
+          : '<span class="badge badge-me">mutual exclusivity</span>'}</td>
+        <td>${(+r.FDR).toFixed(4)}</td>
+        <td class="text-center">${r.significant ? '✓' : ''}</td>
+      </tr>`).join('');
+  }
+
+  document.querySelectorAll('th.sortable').forEach(th =>
+    th.addEventListener('click', () => {
+      const col = th.dataset.col;
+      sortAsc = (sortCol === col) ? !sortAsc : false;
+      sortCol = col;
+      renderTable();
+    })
+  );
+
+  function downloadTSV() { if (currentJobId) window.location = `/download/${currentJobId}`; }
+
+  function showError(msg) {
+    const box = document.getElementById('errorBox');
+    box.textContent = 'Error: ' + msg;
+    box.classList.remove('d-none');
+  }
+</script>
+</body>
+</html>
