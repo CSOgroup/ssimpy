@@ -89,6 +89,79 @@ A TSV file with one row per gene pair, sorted by `|nES|` descending. Key columns
 | `FDR` | Estimated false discovery rate |
 | `significant` | `True` if FDR < threshold |
 
+## Preparing input files from a MAF
+
+The companion script `maf_to_ssimpy.py` converts a standard MAF file into the GAM and TMB files required by ssimpy.
+
+### Basic usage
+```bash
+python maf_to_ssimpy.py --maf input.maf --prefix cohort --output-dir ./data
+```
+
+This produces `cohort_gam.tsv` and `cohort_tmb.tsv` ready to pass to ssimpy.
+
+### Separate missense and truncating files
+```bash
+python maf_to_ssimpy.py --maf input.maf --split-by-type --prefix cohort
+```
+
+Produces six files: `cohort_gam.tsv`, `cohort_gam_missense.tsv`, `cohort_gam_truncating.tsv`, and the corresponding TMB files. Pass the per-type GAMs and TMBs to ssimpy with `--gam` and `--tmb` to enable mutation-type covariates.
+
+### Restrict to a gene list and set mutation thresholds
+```bash
+python maf_to_ssimpy.py \
+    --maf input.maf \
+    --gene-list cancer_genes.txt \
+    --min-samples 2 \
+    --min-mutations 5 \
+    --split-by-type \
+    --prefix cohort
+```
+
+`cancer_genes.txt` is a plain text file with one gene name per line (lines starting with `#` are ignored).
+
+### MAF converter parameters
+
+| Argument | Default | Description |
+|----------|---------|-------------|
+| `--maf` | required | Input MAF TSV file |
+| `--output-dir` | `.` | Directory for output files |
+| `--prefix` | `ssimpy` | Filename prefix for all output files |
+| `--split-by-type` | off | Also produce separate missense and truncating GAM/TMB files |
+| `--metadata` | None | TSV with `sample` and `class` columns — adds a class column to all TMB files |
+| `--gene-list` | None | Text file (one gene per line) — restricts the GAM to listed genes only |
+| `--min-samples` | `2` | Minimum number of mutated samples for a gene to be retained |
+| `--min-mutations` | `1` | Minimum total non-synonymous mutations across all samples for a gene to be retained |
+
+**Note on TMB:** sample TMB is computed from all non-silent mutations genome-wide (not limited to the genes retained in the GAM), which is the correct measure of overall mutational activity used by ssimpy's penalty vector.
+
+### Mutation type classification
+
+| Category | Variant classifications |
+|----------|------------------------|
+| Silent (excluded from TMB and GAM) | `Silent`, `Synonymous_Mutation` |
+| Missense | `Missense_Mutation`, `In_Frame_Del`, `In_Frame_Ins` |
+| Truncating | `Nonsense_Mutation`, `Frame_Shift_Del`, `Frame_Shift_Ins`, `Splice_Site`, `Splice_Region`, `Nonstop_Mutation`, `Translation_Start_Site` |
+| Other non-silent | all remaining — counted in TMB and combined GAM, excluded from per-type files |
+
+### Full pipeline example (MAF → ssimpy results)
+```bash
+# Step 1: convert MAF to ssimpy input files
+python maf_to_ssimpy.py \
+    --maf lung.maf \
+    --metadata sample_classes.tsv \
+    --split-by-type \
+    --min-samples 2 --min-mutations 5 \
+    --prefix lung --output-dir ./data
+
+# Step 2: run ssimpy with mutation-type and class covariates
+python ssimpy.py \
+    --gam data/lung_gam_missense.tsv data/lung_gam_truncating.tsv \
+    --tmb data/lung_tmb_missense.tsv data/lung_tmb_truncating.tsv \
+    --N 1000 --seed 42 \
+    --output results.tsv
+```
+
 ## Reference
 
 ssimpy is the Python implementation of the SelectSim methodology. See also:
