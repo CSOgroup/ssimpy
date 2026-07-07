@@ -1,65 +1,136 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-bs-theme="dark">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>ssimpy — Co-mutation Analysis</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
   <style>
-    body { background: #f4f6f9; font-family: 'Segoe UI', sans-serif; }
+    /* ── Dark palette overrides ─────────────────────────────────────────────── */
+    :root {
+      --bg-base:    #111111;
+      --bg-panel:   #1c1c1c;
+      --bg-raised:  #242424;
+      --bg-input:   #2a2a2a;
+      --border:     #383838;
+      --text:       #dde1e7;
+      --text-muted: #7a8390;
+      --accent:     #4d7cf4;
+      --accent-dim: #151e3f;
+    }
+    /* Override Bootstrap dark defaults to match our palette */
+    [data-bs-theme=dark] {
+      --bs-body-bg:        var(--bg-base);
+      --bs-body-color:     var(--text);
+      --bs-secondary-bg:   var(--bg-raised);
+      --bs-tertiary-bg:    var(--bg-panel);
+      --bs-border-color:   var(--border);
+    }
+    body { background: var(--bg-base); color: var(--text); font-family: 'Segoe UI', sans-serif; }
 
+    /* ── Hero ─────────────────────────────────────────────────────────────── */
     .hero {
-      background: linear-gradient(135deg, #1a1a6e 0%, #2d2d9e 100%);
+      background: linear-gradient(135deg, #0b0b3b 0%, #1a1a6e 55%, #2b2b9a 100%);
       color: white; padding: 2.2rem 0 1.8rem;
     }
     .hero h1 { font-size: 2rem; font-weight: 700; letter-spacing: .03em; }
-    .hero p  { opacity: .75; margin: 0; font-size: .95rem; }
+    .hero p  { opacity: .65; margin: 0; font-size: .95rem; }
 
-    /* Mode selector cards */
-    .mode-card {
-      border: 2px solid #dee2e6; border-radius: 12px;
-      padding: 1.4rem 1.2rem; cursor: pointer;
-      background: white; transition: all .2s;
-      height: 100%;
+    /* ── Step label ────────────────────────────────────────────────────────── */
+    .step-label {
+      color: var(--text-muted); font-size: .75rem; font-weight: 700;
+      text-transform: uppercase; letter-spacing: .07em; margin-bottom: .6rem;
     }
-    .mode-card:hover { border-color: #6c7fe8; background: #f0f2ff; }
+
+    /* ── Mode selector cards ──────────────────────────────────────────────── */
+    .mode-card {
+      border: 2px solid var(--border); border-radius: 12px;
+      padding: 1.4rem 1.2rem; cursor: pointer;
+      background: var(--bg-panel); transition: all .2s; height: 100%;
+    }
+    .mode-card:hover  { border-color: var(--accent); background: var(--bg-raised); }
     .mode-card.active {
-      border-color: #1a1a6e; background: #eef0ff;
-      box-shadow: 0 0 0 3px rgba(26,26,110,.12);
+      border-color: var(--accent); background: var(--accent-dim);
+      box-shadow: 0 0 0 3px rgba(77,124,244,.2);
     }
     .mode-card .mode-icon { font-size: 2rem; margin-bottom: .5rem; }
-    .mode-card h5 { font-weight: 700; margin-bottom: .3rem; color: #1a1a6e; }
-    .mode-card p  { font-size: .85rem; color: #6c757d; margin: 0; }
+    .mode-card h5  { font-weight: 700; margin-bottom: .3rem; color: #8faeff; }
+    .mode-card p   { font-size: .85rem; color: var(--text-muted); margin: 0; }
 
-    /* Drop zones */
+    /* ── Panels ───────────────────────────────────────────────────────────── */
+    .panel {
+      background: var(--bg-panel); border-radius: 12px;
+      padding: 1.5rem; margin-bottom: 1rem;
+      border: 1px solid var(--border);
+      box-shadow: 0 2px 10px rgba(0,0,0,.4);
+    }
+    .panel-title { font-weight: 700; color: #8faeff; margin-bottom: 1rem; font-size: 1rem; }
+
+    /* ── Drop zones ───────────────────────────────────────────────────────── */
     .drop-zone {
-      border: 2px dashed #adb5bd; border-radius: 8px;
-      padding: 1.2rem; text-align: center; cursor: pointer;
-      background: #fafafa; transition: border-color .2s, background .2s;
+      border: 2px dashed var(--border); border-radius: 8px;
+      padding: 1.1rem .9rem; text-align: center; cursor: pointer;
+      background: var(--bg-input); transition: border-color .2s, background .2s;
     }
     .drop-zone:hover, .drop-zone.dragover {
-      border-color: #1a1a6e; background: #eef0ff;
+      border-color: var(--accent); background: var(--accent-dim);
     }
     .drop-zone input[type=file] { display: none; }
-    .drop-zone .dz-label { font-size: .9rem; color: #495057; }
-    .drop-zone .dz-hint  { font-size: .78rem; color: #adb5bd; margin-top: .2rem; }
+    .drop-zone .dz-label { font-size: .88rem; color: var(--text); }
+    .drop-zone .dz-hint  { font-size: .76rem; color: var(--text-muted); margin-top: .2rem; }
     .file-badge {
-      display: inline-block; background: #e8ecff; color: #1a1a6e;
-      border-radius: 20px; padding: .15rem .7rem; font-size: .8rem;
-      margin: .2rem .15rem 0;
+      display: inline-block; background: #1b2a52; color: #8faeff;
+      border-radius: 20px; padding: .15rem .7rem; font-size: .78rem;
+      margin: .25rem .1rem 0;
     }
 
-    /* Section panels */
-    .panel { background: white; border-radius: 12px; padding: 1.5rem; margin-bottom: 1rem; box-shadow: 0 1px 4px rgba(0,0,0,.06); }
-    .panel-title { font-weight: 700; color: #1a1a6e; margin-bottom: 1rem; font-size: 1rem; }
+    /* ── GAM/TMB pair rows ────────────────────────────────────────────────── */
+    .gam-tmb-row {
+      background: var(--bg-raised); border-radius: 10px;
+      padding: .9rem 1rem .8rem; margin-bottom: .5rem;
+      border: 1px solid var(--border);
+    }
+    .row-label {
+      font-size: .72rem; font-weight: 700; color: var(--text-muted);
+      text-transform: uppercase; letter-spacing: .05em;
+    }
 
-    /* Results */
-    .badge-co { background-color: #0d6efd !important; }
-    .badge-me { background-color: #dc3545 !important; }
-    .summary-box { background: #f0f2ff; border-radius: 8px; padding: .9rem 1.2rem; }
+    /* ── Form controls ────────────────────────────────────────────────────── */
+    .form-control, .form-select {
+      background: var(--bg-input) !important; border-color: var(--border) !important;
+      color: var(--text) !important;
+    }
+    .form-control:focus, .form-select:focus {
+      border-color: var(--accent) !important;
+      box-shadow: 0 0 0 .2rem rgba(77,124,244,.22) !important;
+    }
+    .form-control::placeholder { color: var(--text-muted) !important; }
+    .form-check-input { background-color: var(--bg-input) !important; border-color: var(--border) !important; }
+    .form-check-input:checked { background-color: var(--accent) !important; border-color: var(--accent) !important; }
+
+    /* ── Alerts ───────────────────────────────────────────────────────────── */
+    .alert-info  { background: #0c1e38 !important; border-color: #1a3a6a !important; color: #7ab0f5 !important; }
+    .alert-danger { background: #2a0d0d !important; border-color: #5a1515 !important; color: #f08080 !important; }
+
+    /* ── Results badges — green/violet ────────────────────────────────────── */
+    .badge-co { background-color: #1a7a45 !important; color: #fff !important; }
+    .badge-me { background-color: #6232a8 !important; color: #fff !important; }
+
+    .summary-box {
+      background: var(--bg-raised); border-radius: 8px;
+      padding: .9rem 1.2rem; border: 1px solid var(--border);
+    }
+
+    /* ── Table ────────────────────────────────────────────────────────────── */
+    .table > :not(caption) > * > * { border-color: var(--border); }
+    .table tbody tr:nth-child(odd)  > * { background: #161616; color: var(--text); }
+    .table tbody tr:nth-child(even) > * { background: var(--bg-raised); color: var(--text); }
+    .table tbody tr:hover           > * { background: #1e2640 !important; color: var(--text); }
+    .table-dark { --bs-table-bg: #0e0e0e; --bs-table-border-color: var(--border); }
     th.sortable { cursor: pointer; user-select: none; white-space: nowrap; }
-    th.sortable:hover { background: #e9ecef; }
+    th.sortable:hover { background: #1a2244 !important; }
 
+    .border-top { border-color: var(--border) !important; }
     #resultsSection { display: none; }
     #spinner        { display: none; }
     #sharedSection  { display: none; }
@@ -76,7 +147,7 @@
 
   <!-- ── Step 1: Mode selector ──────────────────────────────────────────── -->
   <div class="mb-3">
-    <div class="text-muted small mb-2 fw-semibold text-uppercase" style="letter-spacing:.05em">Step 1 — Choose input format</div>
+    <div class="step-label">Step 1 — Choose input format</div>
     <div class="row g-3">
       <div class="col-md-6">
         <div class="mode-card" id="modeCardA" onclick="selectMode('A')">
@@ -100,29 +171,17 @@
     <div class="panel">
       <div class="panel-title">Step 2 — Upload files</div>
       <div class="alert alert-info py-2 small mb-3">
-        File order matters: GAM file 1 is paired with TMB file 1, etc.
-        Multiple files enable per-mutation-type covariates (e.g. missense + truncating).
+        Each row is one matched GAM + TMB pair representing a mutation type (e.g. missense, truncating).
+        Add rows for multiple types — all GAMs must share identical genes and samples.
+        TMB files are optional; if provided, supply one per GAM row.
       </div>
-      <div class="row g-3">
-        <div class="col-md-6">
-          <label class="form-label fw-semibold">GAM file(s) <span class="text-danger">*</span></label>
-          <div class="drop-zone" id="dzGam" onclick="document.getElementById('inGam').click()">
-            <input type="file" id="inGam" multiple accept=".tsv,.txt,.csv" />
-            <div class="dz-label">Click or drag GAM TSV file(s)</div>
-            <div class="dz-hint">Binary gene × sample matrix — rows=genes, columns=samples</div>
-          </div>
-          <div id="listGam" class="mt-1"></div>
-        </div>
-        <div class="col-md-6">
-          <label class="form-label fw-semibold">TMB file(s) <span class="text-muted">(optional)</span></label>
-          <div class="drop-zone" id="dzTmb" onclick="document.getElementById('inTmb').click()">
-            <input type="file" id="inTmb" multiple accept=".tsv,.txt,.csv" />
-            <div class="dz-label">Click or drag TMB TSV file(s)</div>
-            <div class="dz-hint">Columns: sample, tmb [, class] — falls back to GAM column sums if omitted</div>
-          </div>
-          <div id="listTmb" class="mt-1"></div>
-        </div>
-      </div>
+
+      <!-- Dynamic GAM/TMB pair rows -->
+      <div id="gamTmbRows"></div>
+
+      <button type="button" class="btn btn-outline-secondary btn-sm mt-2" onclick="addGamTmbRow()">
+        + Add mutation type
+      </button>
     </div>
   </div>
 
@@ -160,9 +219,8 @@
         </div>
       </div>
 
-      <!-- MAF-specific parameters -->
       <div class="border-top pt-3 mt-1">
-        <div class="fw-semibold small text-muted mb-2 text-uppercase" style="letter-spacing:.04em">MAF conversion options</div>
+        <div class="step-label mb-2">MAF conversion options</div>
         <div class="row g-3 align-items-end">
           <div class="col-sm-4">
             <label class="form-label">Min mutated samples per gene</label>
@@ -222,7 +280,6 @@
       </div>
     </div>
 
-    <!-- Run button -->
     <div class="d-grid mb-4">
       <button class="btn btn-primary btn-lg fw-bold" id="runBtn" onclick="runAnalysis()">
         Run ssimpy
@@ -250,7 +307,7 @@
         <label class="form-check-label" for="showAll">Show all pairs (not just significant)</label>
       </div>
       <div class="table-responsive">
-        <table class="table table-sm table-hover table-bordered align-middle">
+        <table class="table table-sm table-bordered align-middle">
           <thead class="table-dark">
             <tr>
               <th class="sortable" data-col="gene1">Gene 1 ↕</th>
@@ -278,58 +335,135 @@
   let currentJobId = null;
   let allRows = [], sigRows = [];
   let sortCol = 'nES', sortAsc = false;
+  let rowCounter = 0;
 
   // ── Mode selector ──────────────────────────────────────────────────────────
   function selectMode(mode) {
     currentMode = mode;
     document.getElementById('modeCardA').classList.toggle('active', mode === 'A');
     document.getElementById('modeCardB').classList.toggle('active', mode === 'B');
-    document.getElementById('sectionA').style.display = mode === 'A' ? 'block' : 'none';
-    document.getElementById('sectionB').style.display = mode === 'B' ? 'block' : 'none';
+    document.getElementById('sectionA').style.display  = mode === 'A' ? 'block' : 'none';
+    document.getElementById('sectionB').style.display  = mode === 'B' ? 'block' : 'none';
     document.getElementById('sharedSection').style.display = 'block';
   }
 
-  // ── Drop zones ─────────────────────────────────────────────────────────────
-  function setupDrop(zoneId, inputId, listId, multi) {
-    const zone  = document.getElementById(zoneId);
-    const input = document.getElementById(inputId);
+  // ── Drop zone wiring (works on any elements) ───────────────────────────────
+  function setupDropZone(zone, input, listEl, multi) {
     zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('dragover'); });
     zone.addEventListener('dragleave', () => zone.classList.remove('dragover'));
     zone.addEventListener('drop', e => {
       e.preventDefault(); zone.classList.remove('dragover');
-      if (multi) {
-        // DataTransfer.files is read-only; assign via input reset trick
-        const dt = new DataTransfer();
-        Array.from(e.dataTransfer.files).forEach(f => dt.items.add(f));
-        input.files = dt.files;
-      } else {
-        const dt = new DataTransfer();
-        if (e.dataTransfer.files[0]) dt.items.add(e.dataTransfer.files[0]);
-        input.files = dt.files;
-      }
-      showFiles(input, listId);
+      const dt = new DataTransfer();
+      const files = Array.from(e.dataTransfer.files);
+      (multi ? files : files.slice(0, 1)).forEach(f => dt.items.add(f));
+      input.files = dt.files;
+      showBadges(input, listEl);
     });
-    input.addEventListener('change', () => showFiles(input, listId));
+    input.addEventListener('change', () => showBadges(input, listEl));
   }
 
-  function showFiles(input, listId) {
-    const el = document.getElementById(listId);
-    el.innerHTML = Array.from(input.files)
+  function showBadges(input, listEl) {
+    listEl.innerHTML = Array.from(input.files)
       .map(f => `<span class="file-badge">📄 ${f.name}</span>`).join('');
   }
 
-  setupDrop('dzGam',   'inGam',   'listGam',   true);
-  setupDrop('dzTmb',   'inTmb',   'listTmb',   true);
-  setupDrop('dzMaf',   'inMaf',   'listMaf',   false);
-  setupDrop('dzMeta',  'inMeta',  'listMeta',  false);
-  setupDrop('dzGenes', 'inGenes', 'listGenes', false);
+  // ── GAM/TMB dynamic rows ───────────────────────────────────────────────────
+  function addGamTmbRow() {
+    rowCounter++;
+    const idx = rowCounter;
+    const container = document.getElementById('gamTmbRows');
+
+    const row = document.createElement('div');
+    row.className = 'gam-tmb-row';
+    row.id = `gamRow_${idx}`;
+    row.innerHTML = `
+      <div class="d-flex justify-content-between align-items-center mb-2">
+        <span class="row-label"></span>
+        <button type="button" class="btn btn-sm btn-outline-danger remove-btn"
+                style="padding:.1rem .45rem;font-size:.72rem;line-height:1.4"
+                onclick="removeGamTmbRow('gamRow_${idx}')">✕ Remove</button>
+      </div>
+      <div class="row g-2">
+        <div class="col-md-6">
+          <label class="form-label" style="font-size:.83rem">
+            GAM file <span class="text-danger">*</span>
+          </label>
+          <div class="drop-zone" id="dzGam_${idx}"
+               onclick="document.getElementById('inGam_${idx}').click()">
+            <input type="file" id="inGam_${idx}" accept=".tsv,.txt,.csv" />
+            <div class="dz-label">Click or drag GAM TSV</div>
+            <div class="dz-hint">Binary gene × sample matrix</div>
+          </div>
+          <div id="listGam_${idx}" class="mt-1"></div>
+        </div>
+        <div class="col-md-6">
+          <label class="form-label" style="font-size:.83rem">
+            TMB file <span class="text-muted">(optional)</span>
+          </label>
+          <div class="drop-zone" id="dzTmb_${idx}"
+               onclick="document.getElementById('inTmb_${idx}').click()">
+            <input type="file" id="inTmb_${idx}" accept=".tsv,.txt,.csv" />
+            <div class="dz-label">Click or drag TMB TSV</div>
+            <div class="dz-hint">Columns: sample, tmb [, class]</div>
+          </div>
+          <div id="listTmb_${idx}" class="mt-1"></div>
+        </div>
+      </div>`;
+
+    container.appendChild(row);
+    reindexRows();
+
+    setupDropZone(
+      document.getElementById(`dzGam_${idx}`),
+      document.getElementById(`inGam_${idx}`),
+      document.getElementById(`listGam_${idx}`), false);
+    setupDropZone(
+      document.getElementById(`dzTmb_${idx}`),
+      document.getElementById(`inTmb_${idx}`),
+      document.getElementById(`listTmb_${idx}`), false);
+  }
+
+  function removeGamTmbRow(rowId) {
+    const container = document.getElementById('gamTmbRows');
+    if (container.querySelectorAll('.gam-tmb-row').length <= 1) return;
+    document.getElementById(rowId)?.remove();
+    reindexRows();
+  }
+
+  function reindexRows() {
+    const rows = document.querySelectorAll('#gamTmbRows .gam-tmb-row');
+    const multi = rows.length > 1;
+    rows.forEach((el, i) => {
+      const lbl = el.querySelector('.row-label');
+      if (lbl) lbl.textContent = i === 0 && !multi
+        ? 'GAM / TMB pair'
+        : `Mutation type ${i + 1}`;
+      const btn = el.querySelector('.remove-btn');
+      if (btn) btn.style.display = multi ? 'inline-block' : 'none';
+    });
+  }
+
+  // Initialise with one row
+  addGamTmbRow();
+
+  // ── Wire up MAF static drop zones ─────────────────────────────────────────
+  setupDropZone(document.getElementById('dzMaf'),   document.getElementById('inMaf'),
+                document.getElementById('listMaf'),   false);
+  setupDropZone(document.getElementById('dzMeta'),  document.getElementById('inMeta'),
+                document.getElementById('listMeta'),  false);
+  setupDropZone(document.getElementById('dzGenes'), document.getElementById('inGenes'),
+                document.getElementById('listGenes'), false);
 
   // ── Run ────────────────────────────────────────────────────────────────────
   async function runAnalysis() {
     if (!currentMode) { alert('Please select an input format above.'); return; }
 
-    if (currentMode === 'A' && !document.getElementById('inGam').files.length) {
-      alert('Please select at least one GAM file.'); return;
+    if (currentMode === 'A') {
+      const gamInputs = Array.from(
+        document.querySelectorAll('#gamTmbRows .gam-tmb-row input[type=file]:first-of-type'));
+      if (gamInputs.some(inp => !inp.files.length)) {
+        alert('Please select a GAM file for every row.'); return;
+      }
     }
     if (currentMode === 'B' && !document.getElementById('inMaf').files.length) {
       alert('Please select a MAF file.'); return;
@@ -341,7 +475,6 @@
     document.getElementById('errorBox').classList.add('d-none');
 
     const fd = new FormData();
-    // Shared parameters
     fd.append('n_simulations', document.getElementById('pN').value);
     fd.append('fdr',           document.getElementById('pFdr').value);
     fd.append('min_mut',       document.getElementById('pMinMut').value);
@@ -354,8 +487,11 @@
     let endpoint;
     if (currentMode === 'A') {
       endpoint = '/run';
-      Array.from(document.getElementById('inGam').files).forEach(f => fd.append('gam_files', f));
-      Array.from(document.getElementById('inTmb').files).forEach(f => fd.append('tmb_files', f));
+      document.querySelectorAll('#gamTmbRows .gam-tmb-row').forEach(rowEl => {
+        const inputs = rowEl.querySelectorAll('input[type=file]');
+        if (inputs[0]?.files[0]) fd.append('gam_files', inputs[0].files[0]);
+        if (inputs[1]?.files[0]) fd.append('tmb_files', inputs[1].files[0]);
+      });
     } else {
       endpoint = '/run-from-maf';
       fd.append('maf_file', document.getElementById('inMaf').files[0]);
@@ -363,9 +499,9 @@
       const genes = document.getElementById('inGenes').files[0];
       if (meta)  fd.append('metadata_file',  meta);
       if (genes) fd.append('gene_list_file', genes);
-      fd.append('split_by_type',   document.getElementById('mafSplitByType').checked ? 'true' : 'false');
-      fd.append('min_samples',     document.getElementById('mafMinSamples').value);
-      fd.append('min_mutations',   document.getElementById('mafMinMutations').value);
+      fd.append('split_by_type', document.getElementById('mafSplitByType').checked ? 'true' : 'false');
+      fd.append('min_samples',   document.getElementById('mafMinSamples').value);
+      fd.append('min_mutations', document.getElementById('mafMinMutations').value);
     }
 
     try {
@@ -375,8 +511,8 @@
 
       currentJobId = data.job_id;
       document.getElementById('summary').innerHTML =
-        `<strong>${data.n_significant}</strong> significant pairs &nbsp;|&nbsp;` +
-        `<span class="badge badge-co ms-1">${data.n_co_occurrence} co-occurrence</span>` +
+        `<strong>${data.n_significant}</strong> significant pairs &nbsp;|&nbsp; ` +
+        `<span class="badge badge-co">${data.n_co_occurrence} co-occurrence</span> ` +
         `<span class="badge badge-me ms-1">${data.n_mutual_exclusivity} mutual exclusivity</span>` +
         `<span class="text-muted ms-2 small">${data.n_total_pairs} total pairs tested</span>`;
 
