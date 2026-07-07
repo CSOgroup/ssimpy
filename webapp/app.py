@@ -66,10 +66,13 @@ async def lifespan(app: FastAPI):
     task.cancel()
 
 
-app = FastAPI(title='ssimpy web service', lifespan=lifespan)
+app = FastAPI(title='ssimpy web service', lifespan=lifespan,
+              docs_url=None, redoc_url=None)  # disable Swagger UI; we serve /docs ourselves
 
 STATIC_DIR = Path(__file__).parent / 'static'
+EXAMPLE_DIR = SELECTSIM_DIR / 'example_data'
 app.mount('/static', StaticFiles(directory=str(STATIC_DIR)), name='static')
+app.mount('/example_data', StaticFiles(directory=str(EXAMPLE_DIR)), name='example_data')
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
@@ -114,6 +117,11 @@ def _register_job(job_id, results_df, output_tsv):
 @app.get('/', response_class=HTMLResponse)
 def index():
     return (STATIC_DIR / 'index.html').read_text()
+
+
+@app.get('/docs', response_class=HTMLResponse)
+def docs():
+    return (STATIC_DIR / 'docs.html').read_text()
 
 
 @app.post('/run')

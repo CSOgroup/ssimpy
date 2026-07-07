@@ -25,7 +25,38 @@
       --bs-tertiary-bg:  var(--bg-panel);
       --bs-border-color: var(--border);
     }
-    body { background: var(--bg-base); color: var(--text); font-family: 'Segoe UI', sans-serif; }
+    body {
+      background: var(--bg-base); color: var(--text);
+      font-family: 'Segoe UI', sans-serif;
+      padding-left: 210px;   /* offset for fixed sidebar */
+    }
+
+    /* ── Sidebar ──────────────────────────────────────────────────────────── */
+    #sidebar {
+      position: fixed; top: 0; left: 0;
+      width: 210px; height: 100vh;
+      background: var(--bg-panel); border-right: 1px solid var(--border);
+      display: flex; flex-direction: column;
+      padding: 0; z-index: 200; overflow-y: auto;
+    }
+    .sidebar-brand {
+      font-size: 1.15rem; font-weight: 800; color: #8faeff;
+      padding: 1.4rem 1.2rem 1rem; letter-spacing: .03em;
+      border-bottom: 1px solid var(--border);
+    }
+    .sidebar-brand span { display: block; font-size: .68rem; font-weight: 400; color: var(--text-muted); margin-top: .15rem; letter-spacing: .04em; }
+    .sidebar-nav { list-style: none; padding: .5rem 0; margin: 0; flex: 1; }
+    .sidebar-nav li a {
+      display: flex; align-items: center; gap: .55rem;
+      padding: .58rem 1.2rem; color: var(--text-muted);
+      text-decoration: none; font-size: .86rem;
+      transition: background .15s, color .15s;
+      border-left: 3px solid transparent;
+    }
+    .sidebar-nav li a:hover  { background: var(--bg-raised); color: var(--text); }
+    .sidebar-nav li a.active { background: var(--accent-dim); color: #8faeff; border-left-color: var(--accent); }
+    .sidebar-nav .nav-icon   { font-size: 1rem; flex-shrink: 0; }
+    .sidebar-divider { height: 1px; background: var(--border); margin: .5rem 1.2rem; }
 
     /* ── Hero ─────────────────────────────────────────────────────────────── */
     .hero { background: var(--bg-base); color: white; padding: 2.2rem 0 1.8rem; }
@@ -146,6 +177,22 @@
 </head>
 <body>
 
+<!-- ── Sidebar ──────────────────────────────────────────────────────────── -->
+<nav id="sidebar">
+  <div class="sidebar-brand">
+    SelectSim
+    <span>Co-mutation analysis</span>
+  </div>
+  <ul class="sidebar-nav">
+    <li><a href="/" class="active"><span class="nav-icon">🏠</span> Home</a></li>
+    <li><a href="/docs"><span class="nav-icon">📖</span> Documentation</a></li>
+    <div class="sidebar-divider"></div>
+    <li><a href="https://github.com/CSOgroup/ssimpy" target="_blank" rel="noopener">
+      <span class="nav-icon">🐍</span> Python Package
+    </a></li>
+  </ul>
+</nav>
+
 <div class="hero text-center mb-4">
   <h1>Cancer Co-Mutations with SelectSim</h1>
 </div>
@@ -184,7 +231,7 @@
       </div>
       <div id="gamTmbRows"></div>
       <button type="button" class="btn btn-outline-secondary btn-sm mt-2" onclick="addGamTmbRow()">
-        + Add mutation type
+        + Add GAM
       </button>
     </div>
   </div>
