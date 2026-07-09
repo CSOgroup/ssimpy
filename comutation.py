@@ -57,5 +57,5 @@ def compute_weighted_comutation(
     Returns:
         wCO: [n_g x n_g] float weighted co-mutation matrix
     """
-    weighted = gam * p          # broadcast: [n_g x n_t] * [n_t] → [n_g x n_t]
-    return weighted @ gam.T     # [n_g x n_g]
+    weighted = gam * p                  # broadcast: [n_g x n_t] * [n_t] → [n_g x n_t]
+    return np.dot(weighted, gam.T)     # [n_g x n_g]; np.dot avoids spurious BLAS FP warnings with mixed int8/float64

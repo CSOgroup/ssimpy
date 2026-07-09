@@ -2,27 +2,41 @@ import numpy as np
 
 
 def simulate_rcras(
-    E: np.ndarray,
+    E,
     gene_counts: np.ndarray,
     rng: np.random.Generator,
 ) -> np.ndarray:
     """One rcRAS simulation: generates a binary matrix that exactly preserves
     each gene's observed mutation count (row sums).
 
-    Algorithm:
+    Single-type:
         S_hat = E - Uniform(0,1)
-        For each gene row i, keep exactly gene_counts[i] entries as 1,
-        chosen as the top-gene_counts[i] values of S_hat[i].
+
+    Multi-type (E is a list of K arrays):
+        Draw independent noise per mutation type, then take the element-wise
+        maximum of residuals before ranking. This reflects that missense and
+        truncating mutations arise from independent processes, so either type
+        independently increases a sample's chance of being selected for a gene.
+
+        S_hat = max_k( E_k - Uniform_k(0,1) )
+
+    For each gene row i, keep exactly gene_counts[i] entries as 1,
+    chosen as the top-gene_counts[i] values of S_hat[i].
 
     Args:
-        E          : [n_g x n_t] expected mutation probability matrix
+        E          : [n_g x n_t] expected mutation probability matrix, OR
+                     list of K such matrices for multi-type (one per mutation type)
         gene_counts: [n_g] int, observed number of mutated samples per gene
         rng        : numpy random Generator (shared across calls for reproducibility)
 
     Returns:
         S: [n_g x n_t] int8 binary simulated GAM
     """
-    S_hat = E - rng.uniform(size=E.shape)
+    if isinstance(E, list):
+        residuals = [E_k - rng.uniform(size=E_k.shape) for E_k in E]
+        S_hat = np.maximum.reduce(residuals)
+    else:
+        S_hat = E - rng.uniform(size=E.shape)
 
     # For each row, rank values descending; keep rank < gene_counts[i] as 1.
     # Double-argsort trick: rank_pos[i,j] = rank of column j in desc order of row i.
@@ -69,7 +83,10 @@ def run_simulations(
 
     def _one_sim():
         blocks = [
-            simulate_rcras(E[:, s:e], gc_k, rng)
+            simulate_rcras(
+                [E_k[:, s:e] for E_k in E] if isinstance(E, list) else E[:, s:e],
+                gc_k, rng,
+            )
             for s, e, gc_k in class_slices
         ]
         return np.concatenate(blocks, axis=1)

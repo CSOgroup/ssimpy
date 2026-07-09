@@ -159,14 +159,14 @@ def _fdr_one_category(
     obs: np.ndarray,
     sims_cat: np.ndarray,
 ) -> np.ndarray:
-    """Compute per-pair FDR for both co-occurrence (+) and mutual exclusivity (-).
+    """Compute per-pair FDR using absolute nES values (both tails pooled).
 
-    Runs _fdr_one_direction independently for each tail:
-      - Positive tail  (co-occurrence)    : FDR for pairs with nES > 0
-      - Negative tail  (mutual exclusivity): FDR for pairs with nES < 0,
-        obtained by flipping the sign of obs and sims and applying the same logic.
+    Matches R's estimateFDR2: co-occurrence and mutual exclusivity compete
+    against the same null magnitude distribution. A pair's FDR reflects how
+    often any simulation produces an effect at least as large in either
+    direction, so weak ME pairs are not privileged by having a sparser
+    one-sided null.
 
-    Each pair is assigned the FDR corresponding to its observed direction.
     Pairs with nES = 0 receive FDR = 1.0.
 
     Args:
@@ -176,21 +176,7 @@ def _fdr_one_category(
     Returns:
         fdr: [n_pairs_cat] FDR values in [0, 1]
     """
-    fdr = np.ones(len(obs))
-
-    # Co-occurrence: positive tail
-    pos_mask = obs > 0
-    if np.any(pos_mask):
-        fdr_pos = _fdr_one_direction(obs, sims_cat)
-        fdr[pos_mask] = fdr_pos[pos_mask]
-
-    # Mutual exclusivity: negative tail — flip signs so the same logic applies
-    neg_mask = obs < 0
-    if np.any(neg_mask):
-        fdr_neg = _fdr_one_direction(-obs, -sims_cat)
-        fdr[neg_mask] = fdr_neg[neg_mask]
-
-    return fdr
+    return _fdr_one_direction(np.abs(obs), np.abs(sims_cat))
 
 
 def estimate_fdr(

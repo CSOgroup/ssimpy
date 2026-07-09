@@ -102,21 +102,22 @@ def compute_E_matrix_by_class(
 # Multi-type E matrix (element-wise max across mutation types)
 # ---------------------------------------------------------------------------
 
-def compute_E_matrix_multitype(gams: list, tmbs: list) -> np.ndarray:
-    """Element-wise max of per-mutation-type E matrices.
+def compute_E_matrix_multitype(gams: list, tmbs: list) -> list:
+    """Per-mutation-type E matrices returned as a list.
 
-    For K mutation types, computes E_k for each k, then returns the
-    element-wise maximum so that the simulation respects the most permissive
-    expectation across types.
+    For K mutation types, computes E_k for each k. The simulation combines
+    them via independent noise draws per type (max of per-type residuals),
+    which better reflects that missense and truncating processes act
+    independently.
 
     Args:
         gams: list of K [n_g x n_t] binary mutation matrices
         tmbs: list of K [n_t] TMB arrays
 
     Returns:
-        E: [n_g x n_t] element-wise max of per-type expected mutation matrices
+        E_list: list of K [n_g x n_t] expected mutation matrices, one per type
     """
-    return np.maximum.reduce([compute_E_matrix(g, t) for g, t in zip(gams, tmbs)])
+    return [compute_E_matrix(g, t) for g, t in zip(gams, tmbs)]
 
 
 def compute_E_matrix_multitype_by_class(
@@ -124,14 +125,14 @@ def compute_E_matrix_multitype_by_class(
     tmbs: list,
     classes: np.ndarray,
 ) -> tuple:
-    """Element-wise max of per-type class-stratified E matrices.
+    """Per-mutation-type class-stratified E matrices returned as a list.
 
-    Calls compute_E_matrix_by_class for each (gam_k, tmb_k) pair, then takes
-    the element-wise maximum across all per-type E matrices.  col_order and
-    class_slices are taken from the first type (identical across types because
-    all types share the same sample set and class labels).
+    Calls compute_E_matrix_by_class for each (gam_k, tmb_k) pair and returns
+    the list. col_order and class_slices are taken from the first type
+    (identical across types because all types share the same sample set and
+    class labels).
 
-    Note: gene_counts_k inside class_slices reflects type 0 only.  When the
+    Note: gene_counts_k inside class_slices reflects type 0 only. When the
     combined (OR) GAM is used for simulation the caller must recompute
     gene_counts_k from the reordered combined GAM before passing class_slices
     to run_simulations.
@@ -142,7 +143,7 @@ def compute_E_matrix_multitype_by_class(
         classes: [n_t] sample class labels
 
     Returns:
-        E          : [n_g x n_t] element-wise max E (class-sorted columns)
+        E_list     : list of K [n_g x n_t] expected mutation matrices (class-sorted)
         col_order  : [n_t] original indices in class-sorted order
         class_slices: list of (col_start, col_end, gene_counts_k) from type 0
     """
@@ -153,4 +154,4 @@ def compute_E_matrix_multitype_by_class(
         E_list.append(E_k)
         if col_order is None:
             col_order, class_slices = co, cs
-    return np.maximum.reduce(E_list), col_order, class_slices
+    return E_list, col_order, class_slices
